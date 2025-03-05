@@ -1,0 +1,4 @@
+.zig-cache
+.vscode
+.DS_Store
+zig-out
