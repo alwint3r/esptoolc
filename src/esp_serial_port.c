@@ -1,5 +1,6 @@
 #include "esp_serial_port.h"
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,6 +26,7 @@ esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config) {
   struct termios options;
   if (tcgetattr(*port, &options) < 0) {
     close(*port);
+    fprintf(stderr, "Error getting port attributes: %s\n", strerror(errno));
     return ESP_ERR_PORT_CONFIG;
   }
 
@@ -44,14 +46,25 @@ esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config) {
   cfsetispeed(&options, baud);
   cfsetospeed(&options, baud);
 
-  options.c_cflag |= (CLOCAL | CREAD);
   options.c_cflag &= ~PARENB;
   options.c_cflag &= ~CSTOPB;
   options.c_cflag &= ~CSIZE;
   options.c_cflag |= CS8;
+  options.c_cflag &= ~CRTSCTS;
+  options.c_cflag |= (CLOCAL | CREAD);
+
+  options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  options.c_iflag &= ~(IXON | IXOFF | IXANY);
+  options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | INLCR | IGNCR | ICRNL);
+  options.c_oflag &= ~OPOST;
+  options.c_oflag &= ~ONLCR;
+
+  options.c_cc[VTIME] = 10;  // No timeout
+  options.c_cc[VMIN] = 0;    // Non-blocking read
 
   if (tcsetattr(*port, TCSANOW, &options) < 0) {
     close(*port);
+    fprintf(stderr, "Error setting port attributes: %s\n", strerror(errno));
     return ESP_ERR_PORT_CONFIG;
   }
 
@@ -180,6 +193,7 @@ esp_error_t esp_reset(serial_port_t port, esp_port_config_t* config) {
     reset_delay += ESP32_R0_DELAY;
   }
 
+  // ensure IO0 is HIGH to prevent it entering the download mode
   if ((err = set_dtr(port, false)) != ESP_SUCCESS) {
     return err;
   }
