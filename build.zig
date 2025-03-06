@@ -13,11 +13,15 @@ pub fn build(b: *std.Build) void {
     serial_port_module.addCSourceFiles(.{
         .files = &[_][]const u8{
             "src/esp_serial_port.c",
+            "src/commands/esp_command.c",
+            "src/commands//esp_command_sync.c",
+            "src/os_hal.c",
         },
         .flags = &[_][]const u8{
             "-Wall",
             "-Wextra",
             "-Wpedantic",
+            "-std=c11",
         },
     });
 
@@ -40,6 +44,7 @@ pub fn build(b: *std.Build) void {
             "-Wall",
             "-Wextra",
             "-Wpedantic",
+            "-std=c11",
         },
     });
 

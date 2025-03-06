@@ -211,11 +211,65 @@ esp_error_t esp_reset(serial_port_t port, esp_port_config_t* config) {
   return ESP_SUCCESS;
 }
 
-esp_error_t esp_trigger_download_mode(serial_port_t port,
-                                      esp_port_config_t* config) {
+esp_error_t esp_enter_download_mode(serial_port_t port,
+                                    esp_port_config_t* config) {
   if (!port || !config) {
     return ESP_ERR_INVALID_PORT;
   }
 
   return perform_reset_sequence(port, config);
+}
+
+esp_error_t esp_read_timeout(serial_port_t port, uint8_t* buffer, size_t size,
+                             int timeout_ms, size_t* out_size) {
+  if (port < 0) {
+    return ESP_ERR_INVALID_PORT;
+  }
+
+  if (buffer == NULL || size == 0 || out_size == NULL) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  fd_set read_fds;
+  struct timeval tv;
+  int bytes_read = 0;
+
+  FD_ZERO(&read_fds);
+  FD_SET(port, &read_fds);
+
+  tv.tv_sec = timeout_ms / 1000;
+  tv.tv_usec = (timeout_ms % 1000) * 1000;
+
+  int result = select(port + 1, &read_fds, NULL, NULL, &tv);
+  if (result < 0) {
+    return ESP_ERR_READ_FAILED;
+  } else if (result == 0) {
+    return ESP_ERR_TIMEOUT;  // Timeout occurred
+  }
+
+  bytes_read = read(port, buffer, size);
+  if (bytes_read < 0) {
+    return ESP_ERR_READ_FAILED;
+  }
+
+  *out_size = bytes_read;
+
+  return ESP_SUCCESS;
+}
+
+esp_error_t esp_write(serial_port_t port, const uint8_t* data, size_t size) {
+  if (port < 0) {
+    return ESP_ERR_INVALID_PORT;
+  }
+
+  if (data == NULL || size == 0) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  ssize_t bytes_written = write(port, data, size);
+  if (bytes_written < 0) {
+    return ESP_ERR_WRITE_FAILED;
+  }
+
+  return ESP_SUCCESS;
 }
