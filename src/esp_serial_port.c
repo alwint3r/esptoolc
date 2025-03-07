@@ -273,3 +273,31 @@ esp_error_t esp_write(serial_port_t port, const uint8_t* data, size_t size) {
 
   return ESP_SUCCESS;
 }
+
+esp_error_t esp_discard_input(serial_port_t port) {
+  int ierr;
+  int bytes_available;
+  esp_error_t err;
+  if ((ierr = ioctl(port, FIONREAD, &bytes_available)) < 0) {
+    err = ESP_ERR_READ_FAILED;
+    return err;
+  }
+
+  if (bytes_available > 0) {
+    uint8_t buffer[128];
+    do {
+      bytes_available = read(port, buffer, sizeof(buffer));
+      if (bytes_available < 0) {
+        err = ESP_ERR_READ_FAILED;
+        return err;
+      }
+    } while (bytes_available > 0);
+  }
+
+  if ((ierr = ioctl(port, FIONREAD, &bytes_available)) < 0) {
+    err = ESP_ERR_READ_FAILED;
+    return err;
+  }
+
+  return ESP_SUCCESS;
+}

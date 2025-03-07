@@ -1,6 +1,6 @@
+#include <errno.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,19 +15,7 @@
 #include "os_hal.h"
 #include "slip_reader.h"
 
-volatile bool read_thread_running = true;
-void *serial_read_thread(void *arg);
-void signal_handler(int sig);
-
-int get_serial_lines(int fd) {
-  int status;
-  ioctl(fd, TIOCMGET, &status);
-
-  printf("DTR: %s\n", (status & TIOCM_DTR) ? "HIGH(0)" : "LOW(1)");
-  printf("RTS: %s\n", (status & TIOCM_RTS) ? "LOW(1)" : "HIGH(0)");
-
-  return status;
-}
+#define START_PORT_READER_THREAD 0
 
 void dump_hex(const uint8_t *data, size_t length) {
   for (size_t i = 0; i < length; i++) {
@@ -51,19 +39,21 @@ esp_error_t sync_chip(serial_port_t port) {
 
   uint8_t response_buf[24];
   uint8_t slip_reader_buf[24];
-  size_t total_read_length = 0;
   slip_reader_t slip_reader;
 
   uint8_t response_count = 0;
   uint8_t max_response_count = 8;
   slip_reader_init(&slip_reader, slip_reader_buf, sizeof(slip_reader_buf));
 
-  for (int i = 0; i < 100; i++) {
+  bool first_ack_received = false;
+
+  size_t maximum_retry = 100;
+  for (int attempt = 0; attempt < maximum_retry; attempt++) {
     size_t read_length = 0;
     err = esp_read_timeout(port, response_buf, 24, 100, &read_length);
     if (err != ESP_SUCCESS) {
       if (err == ESP_ERR_TIMEOUT) {
-        if (total_read_length == 0) {
+        if (!first_ack_received) {
           err = esp_write(port, command_out_buf, command_out_len);
           if (err != ESP_SUCCESS) {
             fprintf(stderr, "Failed to write command to ESP chip\n");
@@ -76,6 +66,10 @@ esp_error_t sync_chip(serial_port_t port) {
         fprintf(stderr, "Failed to read response from ESP chip: %d\n", err);
         return err;
       }
+    }
+
+    if (!first_ack_received) {
+      first_ack_received = true;
     }
 
     for (size_t j = 0; j < read_length; j++) {
@@ -103,15 +97,11 @@ esp_error_t sync_chip(serial_port_t port) {
     if (response_count >= max_response_count) {
       break;
     }
-
-    total_read_length += read_length;
   }
 
   if (response_count == 0) {
-    fprintf(stderr, "No messages found in response\n");
     return ESP_ERR_INVALID_RESPONSE;
   }
-  printf("Found %zu messages in response\n", response_count);
 
   return ESP_SUCCESS;
 }
@@ -134,18 +124,11 @@ int main(int argc, char **argv) {
       .reset_type = RESET_TYPE_UNIX,
   };
 
-  signal(SIGINT, signal_handler);
-  signal(SIGTERM, signal_handler);
-
   esp_error_t err;
   if ((err = esp_port_open(&port, &config)) != ESP_SUCCESS) {
     fprintf(stderr, "Failed to open port: %d\n", err);
     return 1;
   }
-
-  esp_reset(port, &config);
-
-  os_sleep_ms(3000);
 
   if ((err = esp_enter_download_mode(port, &config)) != ESP_SUCCESS) {
     fprintf(stderr, "Failed to trigger download mode: %d\n", err);
@@ -153,44 +136,22 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  os_sleep_ms(5000);
+  printf("Download mode triggered successfully.\n");
 
-  pthread_t read_thread;
-  if (pthread_create(&read_thread, NULL, serial_read_thread, &port) != 0) {
-    fprintf(stderr, "Failed to create read thread\n");
+  // wait for the message from ESP chip to be received
+  os_sleep_ms(100);
+
+  // discard bootloader message
+  esp_discard_input(port);
+
+  err = sync_chip(port);
+  if (err != ESP_SUCCESS) {
+    fprintf(stderr, "Failed to sync with ESP chip: %d\n", err);
     esp_port_close(port);
     return 1;
   }
+  printf("ESP chip synced successfully.\n");
 
-  tcflush(port, TCIFLUSH);
-
-  usleep(1 * 1000 * 1000);  // Wait for 5 seconds
-  read_thread_running = false;
-  pthread_join(read_thread, NULL);
-
-  printf("Download mode triggered successfully.\n");
-  get_serial_lines(port);
-  sync_chip(port);
   esp_port_close(port);
   return 0;
-}
-
-void *serial_read_thread(void *arg) {
-  serial_port_t *port = (serial_port_t *)arg;
-  char buffer[256];
-  memset(buffer, 0, sizeof(buffer));
-  while (read_thread_running) {
-    ssize_t bytes_read = read(*port, buffer, sizeof(buffer));
-    if (bytes_read > 0) {
-      fwrite(buffer, 1, bytes_read, stdout);
-      fflush(stdout);
-    }
-    usleep(10000);
-  }
-  return NULL;
-}
-
-void signal_handler(int sig) {
-  read_thread_running = false;
-  printf("\nSignal %d received, stopping read thread...\n", sig);
 }

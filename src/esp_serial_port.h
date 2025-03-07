@@ -41,3 +41,4 @@ esp_error_t esp_reset(serial_port_t port, esp_port_config_t* config);
 esp_error_t esp_read_timeout(serial_port_t port, uint8_t* buffer, size_t size,
                              int timeout_ms, size_t* out_size);
 esp_error_t esp_write(serial_port_t port, const uint8_t* data, size_t size);
+esp_error_t esp_discard_input(serial_port_t port);
