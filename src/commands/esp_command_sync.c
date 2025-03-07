@@ -2,9 +2,7 @@
 
 #include <string.h>
 
-#include "esp_command.h"
-
-#define ESP_CMD_SYNC 0x08
+#include "slip_writer.h"
 
 typedef struct __attribute__((packed)) {
   uint8_t dir;
@@ -14,7 +12,7 @@ typedef struct __attribute__((packed)) {
   uint8_t data[36];
 } esp_command_sync_t;
 
-size_t esp_command_sync_encoded(uint8_t* output) {
+int esp_command_sync_encoded(uint8_t* output) {
   uint8_t data[36] = {0x07, 0x07, 0x12, 0x20};
   memset(data + 4, 0x55, 32);
 
@@ -26,5 +24,5 @@ size_t esp_command_sync_encoded(uint8_t* output) {
   cmd->checksum = 0;
   memcpy(cmd->data, data, 36);
 
-  return esp_command_slip_encode(output, cmd_buf, sizeof(cmd_buf));
+  return slip_write(output, cmd_buf, sizeof(cmd_buf));
 }
