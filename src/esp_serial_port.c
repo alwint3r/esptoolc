@@ -11,7 +11,6 @@
 
 #include "os_hal.h"
 
-#define DEFAULT_RESET_DELAY 100
 #define ESP32_R0_DELAY 500
 #define TOGGLE_DELAY 50
 
@@ -80,7 +79,7 @@ esp_error_t esp_port_close(serial_port_t port) {
   return ESP_SUCCESS;
 }
 
-static esp_error_t set_dtr(serial_port_t port, bool state) {
+esp_error_t esp_set_dtr(serial_port_t port, bool state) {
   int status;
   if (ioctl(port, TIOCMGET, &status) == -1) {
     return ESP_ERR_RESET_FAILED;
@@ -99,7 +98,7 @@ static esp_error_t set_dtr(serial_port_t port, bool state) {
   return ESP_SUCCESS;
 }
 
-static esp_error_t set_rts(serial_port_t port, bool state) {
+esp_error_t esp_set_rts(serial_port_t port, bool state) {
   int status;
   if (ioctl(port, TIOCMGET, &status) == -1) {
     return ESP_ERR_RESET_FAILED;
@@ -118,7 +117,7 @@ static esp_error_t set_rts(serial_port_t port, bool state) {
   return ESP_SUCCESS;
 }
 
-static esp_error_t set_dtr_rts(serial_port_t port, bool dtr, bool rts) {
+esp_error_t esp_set_dtr_rts(serial_port_t port, bool dtr, bool rts) {
   int status;
   if (ioctl(port, TIOCMGET, &status) == -1) {
     return ESP_ERR_RESET_FAILED;
@@ -140,115 +139,6 @@ static esp_error_t set_dtr_rts(serial_port_t port, bool dtr, bool rts) {
     return ESP_ERR_RESET_FAILED;
   }
   return ESP_SUCCESS;
-}
-
-static esp_error_t perform_reset_sequence(serial_port_t port,
-                                          reset_type_t reset_type) {
-  esp_error_t err;
-  int reset_delay = DEFAULT_RESET_DELAY;
-
-  if (reset_type == RESET_TYPE_UNIX) {
-    // Unix-style reset sequence with both pins toggled simultaneously
-    if ((err = set_dtr_rts(port, false, false)) != ESP_SUCCESS) return err;
-    if ((err = set_dtr_rts(port, true, true)) != ESP_SUCCESS) return err;
-    if ((err = set_dtr_rts(port, false, true)) != ESP_SUCCESS)
-      return err;  // IO0=HIGH & EN=LOW
-    os_sleep_ms(100);
-    if ((err = set_dtr_rts(port, true, false)) != ESP_SUCCESS)
-      return err;  // IO0=LOW & EN=HIGH
-    os_sleep_ms(reset_delay);
-    if ((err = set_dtr_rts(port, false, false)) != ESP_SUCCESS)
-      return err;  // IO0=HIGH
-    if ((err = set_dtr(port, false)) != ESP_SUCCESS)
-      return err;  // Ensure IO0=HIGH
-  } else if (reset_type == RESET_TYPE_CLASSIC) {
-    // Classic reset sequence
-    if ((err = set_dtr(port, false)) != ESP_SUCCESS) return err;  // IO0=HIGH
-    if ((err = set_rts(port, true)) != ESP_SUCCESS)
-      return err;  // EN=LOW, reset
-    os_sleep_ms(100);
-    if ((err = set_dtr(port, true)) != ESP_SUCCESS) return err;  // IO0=LOW
-    if ((err = set_rts(port, false)) != ESP_SUCCESS)
-      return err;  // EN=HIGH, out of reset
-    os_sleep_ms(reset_delay);
-    if ((err = set_dtr(port, false)) != ESP_SUCCESS)
-      return err;  // IO0=HIGH, done
-  } else if (reset_type == RESET_TYPE_USB_JTAG) {
-    if ((err = set_dtr_rts(port, false, false)) != ESP_SUCCESS) return err;
-    if ((err = set_dtr(port, true)) != ESP_SUCCESS) return err;  // IO0=LOW
-    os_sleep_ms(100);
-    if ((err = set_rts(port, true)) != ESP_SUCCESS) return err;  // EN=LOW
-    if ((err = set_dtr(port, false)) != ESP_SUCCESS) return err;
-    if ((err = set_rts(port, false)) != ESP_SUCCESS) return err;
-  } else if (reset_type == RESET_TYPE_USB_OTG) {
-    if ((err = set_dtr_rts(port, false, false)) != ESP_SUCCESS) return err;
-    os_sleep_ms(100);
-    if ((err = set_dtr_rts(port, true, true)) != ESP_SUCCESS) return err;
-    os_sleep_ms(100);
-    if ((err = set_dtr_rts(port, false, false)) != ESP_SUCCESS) return err;
-  } else {
-    esp_hard_reset(port);
-  }
-
-  return ESP_SUCCESS;
-}
-esp_error_t esp_hard_reset(serial_port_t port) {
-  esp_error_t err;
-  // ensure IO0 is HIGH to prevent it entering the download mode
-  if ((err = set_dtr(port, false)) != ESP_SUCCESS) {
-    return err;
-  }
-
-  if ((err = set_rts(port, true)) != ESP_SUCCESS) {
-    return err;
-  }
-
-  os_sleep_ms(100);
-
-  if ((err = set_rts(port, false)) != ESP_SUCCESS) {
-    return err;
-  }
-
-  return ESP_SUCCESS;
-}
-
-esp_error_t esp_enter_download_mode(serial_port_t port) {
-  if (!port) {
-    return ESP_ERR_INVALID_PORT;
-  }
-
-  reset_type_t reset_types[] = {
-      RESET_TYPE_USB_JTAG,
-      RESET_TYPE_USB_OTG,
-      RESET_TYPE_UNIX,
-  };
-
-  char response_buf[1024];
-  size_t reset_types_count = sizeof(reset_types) / sizeof(reset_type_t);
-  for (size_t i = 0; i < reset_types_count; i++) {
-    esp_error_t err = perform_reset_sequence(port, reset_types[i]);
-    if (err != ESP_SUCCESS) {
-      fprintf(stderr, "Failed to perform reset sequence: %d\n", err);
-      continue;
-    }
-
-    os_sleep_ms(500);
-
-    ssize_t length;
-    while ((length = read(port, response_buf, sizeof(response_buf))) > 0) {
-      if (length < 1) {
-        fprintf(stderr, "Failed to read response: %d\n", length);
-        continue;
-      }
-      if (strstr(response_buf, "waiting for download") != NULL) {
-        return ESP_SUCCESS;
-      }
-    }
-
-    os_sleep_ms(500);
-  }
-
-  return ESP_ERR_RESET_FAILED;
 }
 
 esp_error_t esp_read_timeout(serial_port_t port, uint8_t* buffer, size_t size,

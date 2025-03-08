@@ -15,6 +15,7 @@ pub fn build(b: *std.Build) void {
             "src/esp_serial_port.c",
             "src/commands/esp_command.c",
             "src/commands//esp_command_sync.c",
+            "src/esp_chip.c",
             "src/os_hal.c",
             "src/slip_reader.c",
             "src/slip_writer.c",

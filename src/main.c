@@ -11,6 +11,7 @@
 
 #include "commands/esp_command.h"
 #include "commands/esp_command_sync.h"
+#include "esp_chip.h"
 #include "esp_serial_port.h"
 #include "os_hal.h"
 #include "slip_reader.h"
