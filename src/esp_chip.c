@@ -1,7 +1,8 @@
 #include "esp_chip.h"
-#include "os_hal.h"
 
 #include <stdio.h>
+
+#include "os_hal.h"
 
 #define DEFAULT_RESET_DELAY 100
 
@@ -28,7 +29,8 @@ esp_error_t esp_enter_download_mode(serial_port_t port) {
     os_sleep_ms(500);
 
     size_t length;
-    while ((err = esp_read_timeout(port, response_buf, sizeof(response_buf), 100, &length)) == ESP_SUCCESS) {
+    while ((err = esp_read_timeout(port, response_buf, sizeof(response_buf),
+                                   100, &length)) == ESP_SUCCESS) {
       if (length < 1) {
         fprintf(stderr, "Failed to read response: %d\n", length);
         continue;
@@ -84,7 +86,8 @@ esp_error_t esp_reset(serial_port_t port, reset_type_t reset_type) {
       return err;  // Ensure IO0=HIGH
   } else if (reset_type == RESET_TYPE_CLASSIC) {
     // Classic reset sequence
-    if ((err = esp_set_dtr(port, false)) != ESP_SUCCESS) return err;  // IO0=HIGH
+    if ((err = esp_set_dtr(port, false)) != ESP_SUCCESS)
+      return err;  // IO0=HIGH
     if ((err = esp_set_rts(port, true)) != ESP_SUCCESS)
       return err;  // EN=LOW, reset
     os_sleep_ms(reset_delay);
