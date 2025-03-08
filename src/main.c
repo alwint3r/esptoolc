@@ -74,7 +74,6 @@ int main(int argc, char **argv) {
       .port_name = port_name,
       .baud_rate = baud,
       .esp32r0_delay = false,
-      .reset_type = RESET_TYPE_UNIX,
   };
 
   esp_error_t err;
@@ -83,7 +82,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  if ((err = esp_enter_download_mode(port, &config)) != ESP_SUCCESS) {
+  if ((err = esp_enter_download_mode(port)) != ESP_SUCCESS) {
     fprintf(stderr, "Failed to trigger download mode: %d\n", err);
     esp_port_close(port);
     return 1;
@@ -238,14 +237,13 @@ esp_error_t read_reg(serial_port_t port, uint32_t addr, uint32_t *value,
   }
 
   size_t max_attempt = 100;
-  for (size_t attempt; attempt < max_attempt; attempt++) {
+  for (size_t attempt = 0; attempt < max_attempt; attempt++) {
     size_t read_length = 0;
     err = esp_read_timeout(port, response_buf, sizeof(response_buf), 100,
                            &read_length);
     if (err != ESP_SUCCESS) {
       return err;
     }
-
     for (size_t j = 0; j < read_length; j++) {
       slip_reader_state_t state =
           slip_reader_process_byte(&slip_reader, response_buf[j]);

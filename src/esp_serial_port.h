@@ -23,20 +23,20 @@ typedef enum {
   RESET_TYPE_CLASSIC = 0,
   RESET_TYPE_UNIX,
   RESET_TYPE_HARD,
+  RESET_TYPE_USB_JTAG,
+  RESET_TYPE_USB_OTG,
 } reset_type_t;
 
 typedef struct {
   const char* port_name;
   int baud_rate;
   bool esp32r0_delay;
-  reset_type_t reset_type;
 } esp_port_config_t;
 
 esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config);
 esp_error_t esp_port_close(serial_port_t port);
-esp_error_t esp_enter_download_mode(serial_port_t port,
-                                    esp_port_config_t* config);
-esp_error_t esp_reset(serial_port_t port, esp_port_config_t* config);
+esp_error_t esp_enter_download_mode(serial_port_t port);
+esp_error_t esp_hard_reset(serial_port_t port);
 
 esp_error_t esp_read_timeout(serial_port_t port, uint8_t* buffer, size_t size,
                              int timeout_ms, size_t* out_size);
