@@ -14,3 +14,4 @@ typedef enum {
 esp_error_t esp_reset(serial_port_t port, reset_type_t reset_type);
 esp_error_t esp_hard_reset(serial_port_t port);
 esp_error_t esp_enter_download_mode(serial_port_t port);
+

@@ -9,7 +9,7 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "os_hal.h"
+#include "osal.h"
 
 #define ESP32_R0_DELAY 500
 #define TOGGLE_DELAY 50

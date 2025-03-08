@@ -13,7 +13,7 @@
 #include "commands/esp_command_sync.h"
 #include "esp_chip.h"
 #include "esp_serial_port.h"
-#include "os_hal.h"
+#include "osal.h"
 #include "slip_reader.h"
 #include "slip_writer.h"
 

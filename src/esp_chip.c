@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include "os_hal.h"
+#include "osal.h"
 
 #define DEFAULT_RESET_DELAY 100
 
