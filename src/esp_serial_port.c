@@ -1,11 +1,17 @@
 #include "esp_serial_port.h"
 
+#if defined(__linux__) || defined(__linux) || defined(linux)
+#define _POSIX_C_SOURCE 199309L
+#endif
+
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
+#include <sys/time.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -51,7 +57,9 @@ esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config) {
   options.c_cflag &= ~CSTOPB;
   options.c_cflag &= ~CSIZE;
   options.c_cflag |= CS8;
-  options.c_cflag &= ~CRTSCTS;
+#if defined(CRTSCTS)
+  options.c_cflag |= CRTSCTS;
+#endif
   options.c_cflag |= (CLOCAL | CREAD);
 
   options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);

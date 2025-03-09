@@ -1,5 +1,9 @@
 #include "osal.h"
 
+#if defined(__linux__) || defined(__linux) || defined(linux)
+#define _POSIX_C_SOURCE 199309L
+#endif
+
 #include <time.h>
 #include <unistd.h>
 
