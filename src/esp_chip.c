@@ -359,7 +359,6 @@ esp_error_t esp_chip_get_security_info(serial_port_t port,
       if (state == SLIP_READER_END) {
         if (slip_reader.buf[0] != ESP_CMD_DIR_RESP ||
             slip_reader.buf[1] != ESP_CMD_GET_SECURITY_INFO) {
-          fprintf(stderr, "Invalid response from ESP chip\n");
           return ESP_ERR_INVALID_RESPONSE;
         }
 
@@ -427,6 +426,16 @@ esp_error_t esp_chip_get_type_from_sec_info(serial_port_t port,
 esp_error_t esp_chip_get_type(serial_port_t port, esp_chip_type_t *chip_type) {
   esp_error_t err = esp_chip_get_type_from_sec_info(port, chip_type);
   if (err != ESP_SUCCESS) {
+    err = esp_enter_download_mode(port);
+    if (err != ESP_SUCCESS) {
+      return err;
+    }
+
+    err = esp_chip_sync(port);
+    if (err != ESP_SUCCESS) {
+      return err;
+    }
+
     err = esp_chip_get_type_from_magic(port, chip_type);
     if (err != ESP_SUCCESS) {
       return err;
