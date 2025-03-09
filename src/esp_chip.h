@@ -3,6 +3,12 @@
 #include "esp_err.h"
 #include "esp_serial_port.h"
 
+#define ESP_REG_MAGIC_VALUE_ADDR 0x40001000
+
+#define ESP8266_MAGIC_VALUE 0xFFF0C101
+#define ESP32_MAGIC_VALUE 0x00F01D83
+#define ESP32S2_MAGIC_VALUE 0x000007C6
+
 typedef enum {
   RESET_TYPE_CLASSIC = 0,
   RESET_TYPE_UNIX,
@@ -39,4 +45,4 @@ esp_error_t esp_chip_read_magic_value(serial_port_t port, uint32_t *value);
 esp_error_t esp_chip_get_type_from_magic(serial_port_t port,
                                          esp_chip_type_t *chip_type);
 
-const char* esp_chip_type_str(esp_chip_type_t chip_type);
+const char *esp_chip_type_str(esp_chip_type_t chip_type);

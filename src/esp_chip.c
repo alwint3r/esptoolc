@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "commands/esp_command.h"
+#include "commands/esp_command_read_reg.h"
 #include "commands/esp_command_sync.h"
 #include "osal.h"
 #include "slip_reader.h"
@@ -170,9 +171,10 @@ esp_error_t esp_chip_sync(serial_port_t port) {
       slip_reader_state_t state =
           slip_reader_process_byte(&slip_reader, response_buf[j]);
       if (state == SLIP_READER_END) {
-        esp_command_sync_response_t *response =
-            (esp_command_sync_response_t *)slip_reader.buf;
-        if (response->dir != 0x01 && response->cmd != ESP_CMD_SYNC) {
+        esp_cmd_resp_header_t *response =
+            (esp_cmd_resp_header_t *)slip_reader.buf;
+        if (response->direction != ESP_CMD_DIR_RESP &&
+            response->command != ESP_CMD_SYNC_CHIP) {
           fprintf(stderr, "Invalid response from ESP chip\n");
           return ESP_ERR_INVALID_RESPONSE;
         }
@@ -203,25 +205,18 @@ esp_error_t esp_chip_sync(serial_port_t port) {
 esp_error_t esp_chip_read_reg(serial_port_t port, uint32_t addr,
                               uint32_t *value, uint8_t *data_out,
                               size_t *data_out_len) {
-  uint8_t command_buf[12];
-  esp_cmd_header_t *cmd_header = (esp_cmd_header_t *)command_buf;
-  cmd_header->direction = 0x00;
-  cmd_header->command = 0x0a;
-  cmd_header->data_length = 4;
-  cmd_header->checksum = 0;
-
-  uint32_t *reg = (uint32_t *)&command_buf[8];
-  *reg = addr;
-
   uint8_t slip_out[32];
-  size_t slip_out_len = slip_write(slip_out, command_buf, sizeof(command_buf));
+  int32_t slip_out_len = esp_command_read_reg_encoded(slip_out, addr);
+  if (slip_out_len < 0) {
+    return ESP_ERR_INVALID_COMMAND;
+  }
 
   uint8_t response_buf[64];
   uint8_t slip_reader_buf[64];
   slip_reader_t slip_reader;
   slip_reader_init(&slip_reader, slip_reader_buf, sizeof(slip_reader_buf));
 
-  esp_error_t err = esp_write(port, slip_out, slip_out_len);
+  esp_error_t err = esp_write(port, slip_out, (size_t)slip_out_len);
   if (err != ESP_SUCCESS) {
     fprintf(stderr, "Failed to write command to ESP chip: %d\n", err);
     return err;
@@ -239,7 +234,8 @@ esp_error_t esp_chip_read_reg(serial_port_t port, uint32_t addr,
       slip_reader_state_t state =
           slip_reader_process_byte(&slip_reader, response_buf[j]);
       if (state == SLIP_READER_END) {
-        if (slip_reader.buf[0] != 0x01 && slip_reader.buf[1] != 0x0a) {
+        if (slip_reader.buf[0] != ESP_CMD_DIR_RESP &&
+            slip_reader.buf[1] != ESP_CMD_READ_REG) {
           fprintf(stderr, "Invalid response from ESP chip\n");
           return ESP_ERR_INVALID_RESPONSE;
         }
@@ -258,10 +254,13 @@ esp_error_t esp_chip_read_reg(serial_port_t port, uint32_t addr,
       }
     }
   }
+
+  return ESP_ERR_TIMEOUT;
 }
 
 esp_error_t esp_chip_read_magic_value(serial_port_t port, uint32_t *value) {
-  esp_error_t err = esp_chip_read_reg(port, 0x40001000, value, NULL, NULL);
+  esp_error_t err =
+      esp_chip_read_reg(port, ESP_REG_MAGIC_VALUE_ADDR, value, NULL, NULL);
   return err;
 }
 

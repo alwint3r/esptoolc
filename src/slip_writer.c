@@ -2,7 +2,7 @@
 
 #include "slip_def.h"
 
-ssize_t slip_write(uint8_t *dest, const uint8_t *src, size_t src_len) {
+int32_t slip_write(uint8_t *dest, const uint8_t *src, size_t src_len) {
   if (!dest || !src || src_len == 0) {
     return -1;
   }

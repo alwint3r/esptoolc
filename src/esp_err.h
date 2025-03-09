@@ -11,5 +11,6 @@ typedef enum {
   ESP_ERR_TIMEOUT = -7,
   ESP_ERR_INVALID_RESPONSE = -8,
   ESP_ERR_INVALID_ARG = -9,
+  ESP_ERR_INVALID_COMMAND = -10,
   ESP_ERR_UNKNOWN,
 } esp_error_t;

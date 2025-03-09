@@ -2,7 +2,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 /**
  * @brief Encode a byte array.
@@ -13,4 +12,4 @@
  * @param src_len Length of the source byte array
  * @return Number of bytes written or -1 on error
  */
-ssize_t slip_write(uint8_t* dest, const uint8_t* src, size_t src_len);
+int32_t slip_write(uint8_t* dest, const uint8_t* src, size_t src_len);
