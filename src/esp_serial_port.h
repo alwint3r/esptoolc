@@ -11,7 +11,7 @@ typedef int serial_port_t;
 
 typedef struct {
   const char* port_name;
-  int baud_rate;
+  int64_t baud_rate;
   bool esp32r0_delay;
 } esp_port_config_t;
 

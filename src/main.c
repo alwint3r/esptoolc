@@ -11,6 +11,7 @@
 
 #include "commands/esp_command.h"
 #include "commands/esp_command_sync.h"
+#include "esp32/esp32_chip.h"
 #include "esp_chip.h"
 #include "esp_serial_port.h"
 #include "osal.h"
@@ -80,6 +81,13 @@ int main(int argc, char **argv) {
   }
 
   printf("Found chip type: %s\n", esp_chip_type_str(chip_type));
+
+  if (chip_type == ESP_CHIP_ESP32) {
+    uint8_t mac[6];
+    esp32_read_mac(port, mac);
+    printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2],
+           mac[3], mac[4], mac[5]);
+  }
 
   esp_chip_hard_reset(port);
 

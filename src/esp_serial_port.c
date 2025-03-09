@@ -46,7 +46,7 @@ esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config) {
       baud = B115200;
       break;
     default:
-      baud = B115200;
+      baud = (speed_t)config->baud_rate;
       break;
   }
 
