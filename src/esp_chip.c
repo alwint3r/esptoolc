@@ -297,7 +297,140 @@ const char *esp_chip_type_str(esp_chip_type_t chip_type) {
       return "ESP32";
     case ESP_CHIP_ESP32S2:
       return "ESP32-S2";
+    case ESP_CHIP_ESP32C3:
+      return "ESP32-C3";
+    case ESP_CHIP_ESP32S3:
+      return "ESP32-S3";
     default:
       return "Unknown";
   }
+}
+
+static __attribute__((unused)) void dump_hex(const uint8_t *data,
+                                             size_t length) {
+  for (size_t i = 0; i < length; i++) {
+    printf("%02X ", data[i]);
+    if ((i + 1) % 16 == 0) {
+      printf("\n");
+    }
+  }
+  printf("\n");
+}
+
+esp_error_t esp_chip_get_security_info(serial_port_t port,
+                                       esp_chip_sec_resp_t *resp) {
+  uint8_t cmd_buffer[ESP_CMD_HEAD_SIZE];
+  esp_cmd_header_t *cmd_header = (esp_cmd_header_t *)cmd_buffer;
+  cmd_header->direction = ESP_CMD_DIR_CMD;
+  cmd_header->command = ESP_CMD_GET_SECURITY_INFO;
+  cmd_header->data_length = 0;
+  cmd_header->checksum = 0;
+
+  uint8_t slip_out_buf[32];
+  int32_t slip_out_len =
+      slip_write(slip_out_buf, cmd_buffer, sizeof(cmd_buffer));
+  if (slip_out_len < 0) {
+    return ESP_ERR_INVALID_COMMAND;
+  }
+
+  esp_error_t err = esp_write(port, slip_out_buf, (size_t)slip_out_len);
+  if (err != ESP_SUCCESS) {
+    fprintf(stderr, "Failed to write command to ESP chip: %d\n", err);
+    return err;
+  }
+
+  uint8_t response_buf[64];
+  uint8_t slip_reader_buf[64];
+  slip_reader_t slip_reader;
+
+  slip_reader_init(&slip_reader, slip_reader_buf, sizeof(slip_reader_buf));
+  size_t max_attempt = 100;
+
+  for (size_t attempt = 0; attempt < max_attempt; attempt++) {
+    size_t read_length = 0;
+    err = esp_read_timeout(port, response_buf, sizeof(response_buf), 100,
+                           &read_length);
+    if (err != ESP_SUCCESS) {
+      return err;
+    }
+    for (size_t j = 0; j < read_length; j++) {
+      slip_reader_state_t state =
+          slip_reader_process_byte(&slip_reader, response_buf[j]);
+      if (state == SLIP_READER_END) {
+        if (slip_reader.buf[0] != ESP_CMD_DIR_RESP ||
+            slip_reader.buf[1] != ESP_CMD_GET_SECURITY_INFO) {
+          fprintf(stderr, "Invalid response from ESP chip\n");
+          return ESP_ERR_INVALID_RESPONSE;
+        }
+
+        esp_cmd_resp_header_t *resp_hdr =
+            (esp_cmd_resp_header_t *)slip_reader.buf;
+        uint8_t *data = slip_reader.buf + ESP_CMD_HEAD_SIZE;
+        uint8_t status_byte = data[resp_hdr->data_length - 2];
+        if (status_byte != 0) {
+          uint8_t reason = data[resp_hdr->data_length - 1];
+          fprintf(stderr,
+                  "Failed to get security info from ESP chip. Reason=%d\n",
+                  (int)reason);
+          return ESP_ERR_READ_FAILED;
+        }
+
+        if (!resp) {
+          return ESP_SUCCESS;
+        }
+
+        esp_chip_sec_info_t *sec_info = (esp_chip_sec_info_t *)data;
+        memcpy(&resp->sec_info, sec_info, sizeof(esp_chip_sec_info_t));
+        if ((resp_hdr->data_length - 2) == 12) {
+          return ESP_SUCCESS;
+        }
+
+        resp->is_chip_id_valid = true;
+        memcpy(&resp->chip_id, &data[12], sizeof(uint32_t));
+        memcpy(&resp->api_version, &data[16], sizeof(uint32_t));
+
+        slip_reader_reset(&slip_reader);
+        return ESP_SUCCESS;
+      }
+    }
+  }
+  return ESP_ERR_TIMEOUT;
+}
+
+esp_error_t esp_chip_get_type_from_sec_info(serial_port_t port,
+                                            esp_chip_type_t *chip_type) {
+  esp_chip_sec_resp_t sec_resp;
+  esp_error_t err = esp_chip_get_security_info(port, &sec_resp);
+  if (err != ESP_SUCCESS) {
+    return err;
+  }
+
+  if (!sec_resp.is_chip_id_valid) {
+    return ESP_ERR_INVALID_COMMAND;
+  }
+
+  switch (sec_resp.chip_id) {
+    case ESP32S3_CHIP_ID:
+      *chip_type = ESP_CHIP_ESP32S3;
+      break;
+    case ESP32C3_CHIP_ID:
+      *chip_type = ESP_CHIP_ESP32C3;
+      break;
+    default:
+      *chip_type = ESP_CHIP_UNKNOWN;
+      break;
+  }
+
+  return ESP_SUCCESS;
+}
+
+esp_error_t esp_chip_get_type(serial_port_t port, esp_chip_type_t *chip_type) {
+  esp_error_t err = esp_chip_get_type_from_sec_info(port, chip_type);
+  if (err != ESP_SUCCESS) {
+    err = esp_chip_get_type_from_magic(port, chip_type);
+    if (err != ESP_SUCCESS) {
+      return err;
+    }
+  }
+  return ESP_SUCCESS;
 }

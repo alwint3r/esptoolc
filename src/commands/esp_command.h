@@ -8,6 +8,7 @@
 
 #define ESP_CMD_SYNC_CHIP 0x08
 #define ESP_CMD_READ_REG 0x0A
+#define ESP_CMD_GET_SECURITY_INFO 0x14
 
 #define ESP_CMD_HEAD_SIZE 8
 

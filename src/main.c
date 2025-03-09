@@ -19,7 +19,7 @@
 
 #define START_PORT_READER_THREAD 0
 
-void dump_hex(const uint8_t *data, size_t length) {
+static void dump_hex(const uint8_t *data, size_t length) {
   for (size_t i = 0; i < length; i++) {
     printf("%02X ", data[i]);
     if ((i + 1) % 16 == 0) {
@@ -63,9 +63,6 @@ int main(int argc, char **argv) {
   // wait for the message from ESP chip to be received
   os_sleep_ms(100);
 
-  // discard bootloader message
-  esp_discard_input(port);
-
   err = esp_chip_sync(port);
   if (err != ESP_SUCCESS) {
     fprintf(stderr, "Failed to sync with ESP chip: %d\n", err);
@@ -75,14 +72,14 @@ int main(int argc, char **argv) {
   printf("ESP chip synced successfully.\n");
 
   esp_chip_type_t chip_type;
-  err = esp_chip_get_type_from_magic(port, &chip_type);
+  err = esp_chip_get_type(port, &chip_type);
   if (err != ESP_SUCCESS) {
     fprintf(stderr, "Failed to get chip type: %d\n", err);
     esp_port_close(port);
     return 1;
   }
 
-  printf("Found %s chip.\n", esp_chip_type_str(chip_type));
+  printf("Found chip type: %s\n", esp_chip_type_str(chip_type));
 
   esp_chip_hard_reset(port);
 

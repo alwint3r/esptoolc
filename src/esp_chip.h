@@ -9,6 +9,9 @@
 #define ESP32_MAGIC_VALUE 0x00F01D83
 #define ESP32S2_MAGIC_VALUE 0x000007C6
 
+#define ESP32C3_CHIP_ID 0x00000005
+#define ESP32S3_CHIP_ID 0x00000009
+
 typedef enum {
   RESET_TYPE_CLASSIC = 0,
   RESET_TYPE_UNIX,
@@ -21,8 +24,23 @@ typedef enum {
   ESP_CHIP_ESP8266,
   ESP_CHIP_ESP32,
   ESP_CHIP_ESP32S2,
+  ESP_CHIP_ESP32S3,
+  ESP_CHIP_ESP32C3,
   ESP_CHIP_UNKNOWN,
 } esp_chip_type_t;
+
+typedef struct __attribute__((packed)) {
+  uint32_t flags;
+  uint8_t flash_crypt_cnt;
+  uint8_t flash_crypt_key[7];
+} esp_chip_sec_info_t;
+
+typedef struct __attribute__((packed)) {
+  esp_chip_sec_info_t sec_info;
+  bool is_chip_id_valid;
+  uint32_t chip_id;
+  uint32_t api_version;
+} esp_chip_sec_resp_t;
 
 esp_error_t esp_reset(serial_port_t port, reset_type_t reset_type);
 esp_error_t esp_chip_hard_reset(serial_port_t port);
@@ -42,7 +60,15 @@ esp_error_t esp_chip_read_reg(serial_port_t port, uint32_t addr,
                               size_t *data_out_len);
 esp_error_t esp_chip_read_magic_value(serial_port_t port, uint32_t *value);
 
+esp_error_t esp_chip_get_security_info(serial_port_t port,
+                                       esp_chip_sec_resp_t *resp);
+
 esp_error_t esp_chip_get_type_from_magic(serial_port_t port,
                                          esp_chip_type_t *chip_type);
 
 const char *esp_chip_type_str(esp_chip_type_t chip_type);
+
+esp_error_t esp_chip_get_type_from_sec_info(serial_port_t port,
+                                            esp_chip_type_t *chip_type);
+
+esp_error_t esp_chip_get_type(serial_port_t port, esp_chip_type_t *chip_type);
