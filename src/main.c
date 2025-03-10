@@ -18,8 +18,6 @@
 #include "slip_reader.h"
 #include "slip_writer.h"
 
-#define START_PORT_READER_THREAD 0
-
 static void dump_hex(const uint8_t *data, size_t length) {
   for (size_t i = 0; i < length; i++) {
     printf("%02X ", data[i]);
@@ -83,8 +81,25 @@ int main(int argc, char **argv) {
   printf("Found chip type: %s\n", esp_chip_type_str(chip_type));
 
   if (chip_type == ESP_CHIP_ESP32) {
+    esp32_chip_desc_t chip_desc;
+    err = esp32_get_chip_desc(port, &chip_desc);
+    if (err != ESP_SUCCESS) {
+      fprintf(stderr, "Failed to get chip description: %d\n", err);
+      esp_port_close(port);
+      return 1;
+    }
+
+    printf("Chip is %s (revision v%u.%u)\n",
+           esp32_chip_name_str(chip_desc.name), chip_desc.major_rev,
+           chip_desc.minor_rev);
+
     uint8_t mac[6];
-    esp32_read_mac(port, mac);
+    err = esp32_read_mac(port, mac);
+    if (err != ESP_SUCCESS) {
+      fprintf(stderr, "Failed to read MAC address: %d\n", err);
+      esp_port_close(port);
+      return 1;
+    }
     printf("MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", mac[0], mac[1], mac[2],
            mac[3], mac[4], mac[5]);
   }
