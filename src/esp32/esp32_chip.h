@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "../esp_chip.h"
 #include "../esp_err.h"
 
 #define ESP32_EFUSE_RD_REG_BASE 0x3FF5A000
@@ -13,6 +14,9 @@
 #define ESP32_EFUSE_RD_OFF_MINOR_REV 5
 #define ESP32_DR_REG_SYSCON_BASE 0x3FF66000
 #define ESP32_APB_CTL_DATE_ADDR (ESP32_DR_REG_SYSCON_BASE + 0x7C)
+
+#define ESP32_UART_CLKDIV_ADDR 0x3FF40014
+#define ESP32_XTAL_CLK_DIVIDER 1
 
 #define ESP32_APB_CTL_DATE_V 1
 #define ESP32_APB_CTL_DATE_S 31
@@ -76,4 +80,12 @@ esp_error_t esp32_is_single_core(int port, bool *out);
  */
 esp_error_t esp32_get_chip_desc(int port, esp32_chip_desc_t *out);
 
+/**
+ * @brief Get the string representation of the chip name.
+ *
+ * @param name The chip name for which the string representation is requested.
+ * @return const char* Pointer to the string representation of the chip name.
+ */
 const char *esp32_chip_name_str(esp32_chip_name_t name);
+
+esp_error_t esp32_get_crystal_freq(int port, int32_t baud_rate, uint8_t *out);

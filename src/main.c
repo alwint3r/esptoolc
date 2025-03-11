@@ -93,6 +93,16 @@ int main(int argc, char **argv) {
            esp32_chip_name_str(chip_desc.name), chip_desc.major_rev,
            chip_desc.minor_rev);
 
+    uint8_t xtal_freq;
+    err = esp32_get_crystal_freq(port, (int32_t)baud, &xtal_freq);
+    if (err != ESP_SUCCESS) {
+      fprintf(stderr, "Failed to get crystal frequency: %d\n", err);
+      esp_port_close(port);
+      return 1;
+    }
+
+    printf("Crystal is %u MHz\n", xtal_freq);
+
     uint8_t mac[6];
     err = esp32_read_mac(port, mac);
     if (err != ESP_SUCCESS) {

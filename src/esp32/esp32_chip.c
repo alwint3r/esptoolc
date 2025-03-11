@@ -219,3 +219,25 @@ const char *esp32_chip_name_str(esp32_chip_name_t name) {
       return "unknown ESP32";
   }
 }
+
+esp_error_t esp32_get_crystal_freq(int port, int32_t baud_rate, uint8_t *out) {
+  uint32_t uart_clock_div;
+  esp_error_t err = esp_chip_read_reg(port, ESP32_UART_CLKDIV_ADDR,
+                                      &uart_clock_div, NULL, NULL);
+  if (err != ESP_SUCCESS) {
+    return err;
+  }
+
+  uart_clock_div &= ESP_UART_CLKDIV_MASK;
+  uint32_t xtal_freq =
+      (uart_clock_div * baud_rate) / 1e6 / ESP32_XTAL_CLK_DIVIDER;
+  if (xtal_freq > 45) {
+    *out = 48;
+  } else if (xtal_freq > 33) {
+    *out = 40;
+  } else {
+    *out = 26;
+  }
+
+  return ESP_SUCCESS;
+}
