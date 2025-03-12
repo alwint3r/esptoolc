@@ -1,4 +1,3 @@
-# ESP32 Download Mode on macOS
+# A Port of esptool in C
 
-Trigger ESP32 into download mode using POSIX termios API.
-Tested on macOS.
+Rewriting the esptool by Espressif for fun and profit.
