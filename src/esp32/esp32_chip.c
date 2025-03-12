@@ -220,7 +220,7 @@ const char *esp32_chip_name_str(esp32_chip_name_t name) {
   }
 }
 
-esp_error_t esp32_get_crystal_freq(int port, int32_t baud_rate, uint8_t *out) {
+esp_error_t esp32_get_crystal_freq(int port, uint32_t baud_rate, uint8_t *out) {
   uint32_t uart_clock_div;
   esp_error_t err = esp_chip_read_reg(port, ESP32_UART_CLKDIV_ADDR,
                                       &uart_clock_div, NULL, NULL);

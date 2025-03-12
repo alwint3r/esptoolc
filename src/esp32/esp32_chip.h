@@ -88,4 +88,4 @@ esp_error_t esp32_get_chip_desc(int port, esp32_chip_desc_t *out);
  */
 const char *esp32_chip_name_str(esp32_chip_name_t name);
 
-esp_error_t esp32_get_crystal_freq(int port, int32_t baud_rate, uint8_t *out);
+esp_error_t esp32_get_crystal_freq(int port, uint32_t baud_rate, uint8_t *out);

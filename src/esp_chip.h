@@ -14,6 +14,8 @@
 
 #define ESP_UART_CLKDIV_MASK 0xFFFFF
 
+#define ESP_ROM_DEFAULT_BAUD 115200
+
 typedef enum {
   RESET_TYPE_CLASSIC = 0,
   RESET_TYPE_UNIX,
@@ -60,13 +62,16 @@ esp_error_t esp_chip_sync(serial_port_t port);
 /**
  * @brief Reads a register from the ESP chip
  *
- * This function sends a read register command to the ESP chip and retrieves the register value.
+ * This function sends a read register command to the ESP chip and retrieves the
+ * register value.
  *
  * @param port The serial port connected to the ESP chip
  * @param addr The register address to read
  * @param value Pointer to store the register value (can be NULL if not needed)
- * @param data_out Optional buffer to store additional data returned by the command
- * @param data_out_len Pointer to variable that will be updated with the length of data_out
+ * @param data_out Optional buffer to store additional data returned by the
+ * command
+ * @param data_out_len Pointer to variable that will be updated with the length
+ * of data_out
  *
  * @return
  *     - ESP_SUCCESS on successful read
@@ -74,7 +79,7 @@ esp_error_t esp_chip_sync(serial_port_t port);
  *     - ESP_ERR_WRITE_FAILED if writing the command to the port fails
  *     - ESP_ERR_TIMEOUT if no response is received within the timeout period
  *     - ESP_ERR_INVALID_RESPONSE if the response from the ESP chip is invalid
- * 
+ *
  */
 esp_error_t esp_chip_read_reg(serial_port_t port, uint32_t addr,
                               uint32_t *value, uint8_t *data_out,
@@ -93,4 +98,3 @@ esp_error_t esp_chip_get_type_from_sec_info(serial_port_t port,
                                             esp_chip_type_t *chip_type);
 
 esp_error_t esp_chip_get_type(serial_port_t port, esp_chip_type_t *chip_type);
-

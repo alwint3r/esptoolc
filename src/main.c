@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
   const char *port_name = argv[1];
   const char *baud_str = argv[2];
 
-  int baud = atoi(baud_str);
+  uint32_t baud = (uint32_t)atoll(baud_str);
   serial_port_t port;
   esp_port_config_t config = {
       .port_name = port_name,

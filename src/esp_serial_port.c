@@ -1,7 +1,11 @@
 #include "esp_serial_port.h"
 
-#if defined(__linux__) || defined(__linux) || defined(linux)
+#if defined(__linux__)
 #define _POSIX_C_SOURCE 199309L
+#endif
+
+#ifdef __APPLE__
+#include <IOKit/serial/ioss.h>
 #endif
 
 #include <errno.h>
@@ -20,6 +24,29 @@
 #define ESP32_R0_DELAY 500
 #define TOGGLE_DELAY 50
 
+static int _esp_set_baud(serial_port_t port, struct termios* tty,
+                         uint32_t baud) {
+#if defined(__APPLE__)
+  if (baud <= 230400) {
+    cfsetispeed(tty, (speed_t)baud);
+    cfsetospeed(tty, (speed_t)baud);
+
+    return 0;
+  } else {
+    speed_t speed = (speed_t)baud;
+    return ioctl(port, IOSSIOSPEED, &speed);
+  }
+#elif defined(__linux__)
+  cfsetispeed(tty, (speed_t)baud);
+  cfsetospeed(tty, (speed_t)baud);
+
+  return 0;
+#else
+#error "Unsupported platform"
+#endif
+  return -1;
+}
+
 esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config) {
   if (port == NULL || config == NULL) {
     return ESP_ERR_INVALID_PORT;
@@ -37,21 +64,8 @@ esp_error_t esp_port_open(serial_port_t* port, esp_port_config_t* config) {
     return ESP_ERR_PORT_CONFIG;
   }
 
-  speed_t baud = B115200;
-  switch (config->baud_rate) {
-    case 9600:
-      baud = B9600;
-      break;
-    case 115200:
-      baud = B115200;
-      break;
-    default:
-      baud = (speed_t)config->baud_rate;
-      break;
-  }
-
-  cfsetispeed(&options, baud);
-  cfsetospeed(&options, baud);
+  speed_t baud = (speed_t)config->baud_rate;
+  _esp_set_baud(*port, &options, baud);
 
   options.c_cflag &= ~PARENB;
   options.c_cflag &= ~CSTOPB;
@@ -218,6 +232,25 @@ esp_error_t esp_discard_input(serial_port_t port) {
     while ((bytes_read = read(port, buffer, sizeof(buffer))) > 0) {
       // Disadcard the data
     }
+  }
+
+  return ESP_SUCCESS;
+}
+
+esp_error_t esp_port_set_baud(serial_port_t port, uint32_t baud_rate) {
+  if (port < 0) {
+    return ESP_ERR_INVALID_PORT;
+  }
+
+  struct termios options;
+  if (tcgetattr(port, &options) < 0) {
+    return ESP_ERR_PORT_CONFIG;
+  }
+
+  _esp_set_baud(port, &options, baud_rate);
+
+  if (tcsetattr(port, TCSANOW, &options) < 0) {
+    return ESP_ERR_PORT_CONFIG;
   }
 
   return ESP_SUCCESS;
