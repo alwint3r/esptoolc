@@ -46,46 +46,53 @@ typedef struct __attribute__((packed)) {
   uint32_t api_version;
 } esp_chip_sec_resp_t;
 
-esp_error_t esp_reset(serial_port_t port, reset_type_t reset_type);
-esp_error_t esp_chip_hard_reset(serial_port_t port);
-esp_error_t esp_enter_download_mode(serial_port_t port);
-
 /**
- * @brief Synchronizes the ESP chip
+ * @brief Reset an ESP device connected to a serial port.
  *
- * @param port The serial port to use for communication
- * @return esp_error_t Returns ESP_SUCCESS on successful synchronization,
- * otherwise an error code
- */
-esp_error_t esp_chip_sync(serial_port_t port);
-
-/**
- * @brief Reads a register from the ESP chip
+ * This function triggers a reset on an ESP device based on the specified reset
+ * type. The reset can be a hard reset (using the hardware reset line) or a soft
+ * reset (using a software command sequence).
  *
- * This function sends a read register command to the ESP chip and retrieves the
- * register value.
+ * @param port The serial port connected to the ESP device
+ * @param reset_type The type of reset to perform depending on how the device is
+ * connected
  *
- * @param port The serial port connected to the ESP chip
- * @param addr The register address to read
- * @param value Pointer to store the register value (can be NULL if not needed)
- * @param data_out Optional buffer to store additional data returned by the
- * command
- * @param data_out_len Pointer to variable that will be updated with the length
- * of data_out
- *
- * @return
- *     - ESP_SUCCESS on successful read
- *     - ESP_ERR_INVALID_COMMAND if command encoding fails
- *     - ESP_ERR_WRITE_FAILED if writing the command to the port fails
- *     - ESP_ERR_TIMEOUT if no response is received within the timeout period
- *     - ESP_ERR_INVALID_RESPONSE if the response from the ESP chip is invalid
- *
+ * @return esp_error_t
+ *     - ESP_OK on success and the device is reset
  */
 esp_error_t esp_chip_read_reg(serial_port_t port, uint32_t addr,
                               uint32_t *value, uint8_t *data_out,
                               size_t *data_out_len);
+
+/**
+ * @brief Reads the magic value from an ESP chip.
+ *
+ * This function communicates with an ESP chip over the specified serial port
+ * to read its magic value, which can be used to identify the chip type for
+ * older chip type like ESP8266, ESP32, and ESP32-S2.
+ *
+ * @param port The serial port connected to the ESP chip
+ * @param value Pointer to store the read magic value
+ *
+ * @return ESP_OK if successful, or an error code if the operation failed
+ */
 esp_error_t esp_chip_read_magic_value(serial_port_t port, uint32_t *value);
 
+/**
+ * @brief Get security information from an ESP chip.
+ *
+ * This function retrieves security-related information from an ESP chip
+ * connected to the specified serial port.
+ * This information is used to identify the chip type for newer chip types like
+ * ESP32-S3 and ESP32-C3.
+ *
+ * @param port The serial port where the ESP chip is connected.
+ * @param resp Pointer to a structure where the security response will be
+ * stored.
+ *
+ * @return esp_error_t
+ *         - ESP_OK: Security information retrieved successfully
+ */
 esp_error_t esp_chip_get_security_info(serial_port_t port,
                                        esp_chip_sec_resp_t *resp);
 
@@ -97,4 +104,16 @@ const char *esp_chip_type_str(esp_chip_type_t chip_type);
 esp_error_t esp_chip_get_type_from_sec_info(serial_port_t port,
                                             esp_chip_type_t *chip_type);
 
+/**
+ * @brief Get the ESP chip type from the device connected to the given serial
+ * port.
+ *
+ * @warning It is SLOW for ESP32 chip because the tool will try to read
+ * the security info first, reset the bootloader communication, and then read
+ * the magic value.
+ *
+ * @param port The serial port connected to the ESP device
+ * @param chip_type Pointer to store the detected chip type
+ * @return esp_error_t ESP_OK on success, or an error code on failure
+ */
 esp_error_t esp_chip_get_type(serial_port_t port, esp_chip_type_t *chip_type);
